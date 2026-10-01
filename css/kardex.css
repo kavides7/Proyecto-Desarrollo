@@ -1,0 +1,50 @@
+.filtros-kardex {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 16px;
+}
+
+.acciones-kardex {
+    display: flex;
+    gap: 10px;
+    margin-top: 20px;
+}
+
+.tarjeta-kardex {
+    margin-top: 24px;
+}
+
+#total-movimientos {
+    font-size: 0.85rem;
+    color: #64748b;
+    font-weight: 600;
+}
+
+.movimiento-entrada {
+    color: #047857;
+    font-weight: 700;
+}
+
+.movimiento-salida {
+    color: #b91c1c;
+    font-weight: 700;
+}
+
+.tipo-movimiento {
+    font-size: 0.75rem;
+    font-weight: 700;
+    background-color: #f1f5f9;
+    padding: 4px 8px;
+    border-radius: 6px;
+}
+
+@media (max-width: 860px) {
+
+    .filtros-kardex {
+        grid-template-columns: 1fr;
+    }
+
+    .acciones-kardex {
+        flex-direction: column;
+    }
+}

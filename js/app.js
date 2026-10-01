@@ -14,6 +14,7 @@ const selectTienda = document.getElementById("select-tienda");
 const selectLote = document.getElementById("select-lote");
 const tipoMovimiento = document.getElementById("tipo-movimiento");
 const inputCantidad = document.getElementById("cantidad");
+const inputObservacion = document.getElementById("observacion");
 const formMovimiento = document.getElementById("form-movimiento");
 const tablaStock = document.getElementById("tabla-stock");
 const alerta = document.getElementById("alerta");
@@ -128,11 +129,23 @@ formMovimiento.addEventListener("submit", async (e) => {
   const idLote = parseInt(selectLote.value);
   const tipo = tipoMovimiento.value;
   const cantidad = parseInt(inputCantidad.value);
+  const observacion = inputObservacion.value.trim();
 
   if (isNaN(cantidad) || cantidad <= 0) {
     mostrarAlerta("Ingresa una cantidad válida mayor a 0.", true);
     return;
   }
+
+  if (
+  (tipo === "AJUSTE_POSITIVO" || tipo === "AJUSTE_NEGATIVO")
+  && observacion === ""
+) {
+  mostrarAlerta(
+    "Debes indicar el motivo del ajuste de inventario.",
+    true
+  );
+  return;
+}
 
   try {
     // 1. Buscar si ya existe el registro de inventario para esa tienda y lote
@@ -149,14 +162,26 @@ formMovimiento.addEventListener("submit", async (e) => {
     let nuevoStock = stockAnterior;
 
     // 2. Aplicar lógica de negocio
-    if (tipo === "COMPRA") {
+    if (tipo === "COMPRA" || tipo === "AJUSTE_POSITIVO") {
+
       nuevoStock = stockAnterior + cantidad;
-    } else if (tipo === "VENTA") {
+
+    } else if (tipo === "VENTA" || tipo === "AJUSTE_NEGATIVO") {
+
       if (stockAnterior < cantidad) {
-        mostrarAlerta(`Operación rechazada: Stock insuficiente. Solo hay ${stockAnterior} unidades disponibles.`, true);
+        mostrarAlerta(
+          `Operación rechazada: Stock insuficiente. Solo hay ${stockAnterior} unidades disponibles.`,
+          true
+        );
         return;
       }
+
       nuevoStock = stockAnterior - cantidad;
+
+    } else {
+
+      mostrarAlerta("Tipo de movimiento no válido.", true);
+      return;
     }
 
     // 3. Actualizar tabla inventario
@@ -171,15 +196,31 @@ formMovimiento.addEventListener("submit", async (e) => {
     if (errUpsert) throw errUpsert;
 
     // 4. Guardar trazabilidad en movimientos_stock
-    await client.from("movimientos_stock").insert({
+    const { error: errMovimiento } = await client
+    .from("movimientos_stock")
+    .insert({
       id_tienda: idTienda,
       id_lote: idLote,
       tipo_movimiento: tipo,
-      cantidad: cantidad
+      cantidad: cantidad,
+      saldo_anterior: stockAnterior,
+      saldo_resultante: nuevoStock,
+      observacion: observacion || null
     });
 
-    mostrarAlerta(`¡Éxito! Se registró la ${tipo === "COMPRA" ? "Entrada (Compra)" : "Salida (Venta)"} de ${cantidad} unidades.`);
-    
+  if (errMovimiento) throw errMovimiento;
+
+    const nombresMovimiento = {
+      COMPRA: "Entrada (Compra)",
+      VENTA: "Salida (Venta)",
+      AJUSTE_POSITIVO: "Ajuste positivo",
+      AJUSTE_NEGATIVO: "Ajuste negativo"
+    };
+
+    mostrarAlerta(
+      `¡Éxito! Se registró ${nombresMovimiento[tipo]} de ${cantidad} unidades.`
+    );
+        
     // Recargar tabla con datos actualizados
     await consultarStockActual();
 

@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>FARMATODO - Kardex</title>
+
+    <link rel="stylesheet" href="css/styles.css">
+    <link rel="stylesheet" href="css/kardex.css">
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+
+<body>
+
+<div class="contenedor">
+
+    <header class="header-principal">
+        <div class="header-texto">
+            <h1>Droguería FARMATODO</h1>
+            <p>Kardex y trazabilidad de movimientos</p>
+        </div>
+
+        <div class="badge-region">
+            <span>Módulo Kardex</span>
+        </div>
+    </header>
+
+    <div id="alerta-kardex" class="alerta oculto"></div>
+
+    <section class="tarjeta">
+
+        <h2 class="titulo-seccion">
+            Consulta histórica de movimientos
+        </h2>
+
+        <div class="filtros-kardex">
+
+            <div class="campo">
+                <label for="filtro-producto">Producto</label>
+                <select id="filtro-producto">
+                    <option value="">Todos los productos</option>
+                </select>
+            </div>
+
+            <div class="campo">
+                <label for="filtro-tienda">Sucursal</label>
+                <select id="filtro-tienda">
+                    <option value="">Todas las sucursales</option>
+                </select>
+            </div>
+
+            <div class="campo">
+                <label for="filtro-lote">Lote</label>
+                <select id="filtro-lote">
+                    <option value="">Todos los lotes</option>
+                </select>
+            </div>
+
+            <div class="campo">
+                <label for="filtro-tipo">Tipo de movimiento</label>
+
+                <select id="filtro-tipo">
+                    <option value="">Todos</option>
+                    <option value="COMPRA">Compra</option>
+                    <option value="VENTA">Venta</option>
+                    <option value="AJUSTE_POSITIVO">Ajuste positivo</option>
+                    <option value="AJUSTE_NEGATIVO">Ajuste negativo</option>
+                    <option value="TRASLADO_ENTRADA">Traslado entrada</option>
+                    <option value="TRASLADO_SALIDA">Traslado salida</option>
+                    <option value="DEVOLUCION">Devolución</option>
+                    <option value="BAJA">Baja</option>
+                </select>
+            </div>
+
+            <div class="campo">
+                <label for="fecha-desde">Desde</label>
+                <input type="date" id="fecha-desde">
+            </div>
+
+            <div class="campo">
+                <label for="fecha-hasta">Hasta</label>
+                <input type="date" id="fecha-hasta">
+            </div>
+
+        </div>
+
+        <div class="acciones-kardex">
+            <button id="btn-consultar"
+                    class="btn btn-primario">
+                Consultar Kardex
+            </button>
+
+            <button id="btn-limpiar"
+                    class="btn btn-secundario">
+                Limpiar filtros
+            </button>
+        </div>
+
+    </section>
+
+
+    <section class="tarjeta tarjeta-kardex">
+
+        <div class="tabla-header">
+
+            <h2 class="titulo-seccion">
+                Historial de movimientos
+            </h2>
+
+            <span id="total-movimientos">
+                0 movimientos
+            </span>
+
+        </div>
+
+        <div class="tabla-contenedor">
+
+            <table class="tabla-datos">
+
+                <thead>
+                    <tr>
+                        <th>Fecha</th>
+                        <th>Sucursal</th>
+                        <th>Producto</th>
+                        <th>Lote</th>
+                        <th>Movimiento</th>
+                        <th>Observación</th>
+                        <th class="texto-derecha">Entrada</th>
+                        <th class="texto-derecha">Salida</th>
+                        <th class="texto-derecha">Saldo</th>
+                    </tr>
+                </thead>
+
+                <tbody id="tabla-kardex">
+
+                    <tr>
+                        <td colspan="9"
+                            class="texto-centro">
+
+                            Cargando movimientos...
+
+                        </td>
+                    </tr>
+
+                </tbody>
+
+            </table>
+
+        </div>
+
+    </section>
+
+</div>
+
+<script src="js/kardex.js"></script>
+
+</body>
+</html>
