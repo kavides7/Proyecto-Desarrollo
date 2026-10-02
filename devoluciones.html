@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>FARMATODO - Proveedores y Devoluciones</title>
+
+  <!-- Estilos compartidos del equipo -->
+  <link rel="stylesheet" href="css/styles.css" />
+
+  <!-- CDN oficial de Supabase JS (el mismo que usa index.html) -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+  <div class="contenedor">
+
+    <header class="header-principal">
+      <div class="header-texto">
+        <h1>Droguería FARMATODO</h1>
+        <p>Módulo de Devoluciones a Proveedores y Liquidación</p>
+      </div>
+    </header>
+
+    <!-- Notificaciones visuales -->
+    <div id="alerta" class="alerta oculto"></div>
+
+    <main class="grid-principal">
+
+      <!-- Formulario: registrar proveedor -->
+      <section class="tarjeta">
+        <h2 class="titulo-seccion">Registrar Proveedor</h2>
+        <form id="form-proveedor" class="formulario">
+
+          <div class="campo">
+            <label for="prov-nombre">Nombre del proveedor</label>
+            <input type="text" id="prov-nombre" maxlength="150" required />
+          </div>
+
+          <div class="campo">
+            <label for="prov-contacto">Persona de contacto</label>
+            <input type="text" id="prov-contacto" maxlength="100" />
+          </div>
+
+          <div class="campo">
+            <label for="prov-telefono">Teléfono</label>
+            <input type="text" id="prov-telefono" maxlength="30" />
+          </div>
+
+          <div class="campo">
+            <label for="prov-correo">Correo</label>
+            <input type="email" id="prov-correo" maxlength="150" />
+          </div>
+
+          <div class="campo">
+            <label for="prov-dias">Días mínimos antes del vencimiento para aceptar devolución</label>
+            <input type="number" id="prov-dias" min="0" value="0" required />
+          </div>
+
+          <div class="campo">
+            <label style="display:flex; gap:0.5rem; align-items:center;">
+              <input type="checkbox" id="prov-canje" checked />
+              Acepta canje de producto
+            </label>
+          </div>
+
+          <div class="campo">
+            <label style="display:flex; gap:0.5rem; align-items:center;">
+              <input type="checkbox" id="prov-nota" checked />
+              Acepta nota de crédito / liquidación
+            </label>
+          </div>
+
+          <div class="campo">
+            <label for="prov-politica">Política de devolución del fabricante</label>
+            <textarea id="prov-politica" rows="3"></textarea>
+          </div>
+
+          <button type="submit" id="btn-guardar" class="btn btn-primario">
+            Guardar proveedor
+          </button>
+        </form>
+      </section>
+
+      <!-- Tabla: proveedores registrados -->
+      <section class="tarjeta">
+        <div class="tabla-header">
+          <h2 class="titulo-seccion">Proveedores Registrados</h2>
+          <button type="button" id="btn-refrescar" class="btn btn-secundario">
+            🔄 Actualizar
+          </button>
+        </div>
+
+        <div class="tabla-contenedor">
+          <table class="tabla-datos">
+            <thead>
+              <tr>
+                <th>Proveedor</th>
+                <th>Contacto</th>
+                <th>Canje</th>
+                <th>Nota de crédito</th>
+                <th class="texto-derecha">Días mín.</th>
+              </tr>
+            </thead>
+            <tbody id="tabla-proveedores">
+              <tr>
+                <td colspan="5" class="texto-centro">Cargando proveedores desde Supabase...</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+    </main>
+  </div>
+
+  <!-- Menú de navegación del módulo -->
+  <script src="js/nav-devoluciones.js"></script>
+
+  <!-- Lógica del módulo (NO se carga app.js en esta página) -->
+  <script src="js/devoluciones.js"></script>
+</body>
+</html>

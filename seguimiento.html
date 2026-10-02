@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>FARMATODO - Seguimiento de Devoluciones</title>
+
+  <!-- Estilos compartidos del equipo -->
+  <link rel="stylesheet" href="css/styles.css" />
+
+  <!-- CDN oficial de Supabase JS -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+  <div class="contenedor">
+
+    <header class="header-principal">
+      <div class="header-texto">
+        <h1>Droguería FARMATODO</h1>
+        <p>Seguimiento de devoluciones y liquidación con proveedores</p>
+      </div>
+    </header>
+
+    <!-- Notificaciones visuales -->
+    <div id="alerta" class="alerta oculto"></div>
+
+    <main class="grid-principal">
+
+      <!-- Columna 1: lista de devoluciones con filtros -->
+      <section class="tarjeta">
+        <div class="tabla-header">
+          <h2 class="titulo-seccion">Devoluciones</h2>
+          <button type="button" id="btn-refrescar" class="btn btn-secundario">🔄 Actualizar</button>
+        </div>
+
+        <div class="formulario">
+          <div class="campo">
+            <label for="filtro-estado">Estado</label>
+            <select id="filtro-estado">
+              <option value="">Todos</option>
+              <option value="En revisión">En revisión</option>
+              <option value="Aceptado">Aceptado</option>
+              <option value="Rechazado">Rechazado</option>
+            </select>
+          </div>
+
+          <div class="campo">
+            <label for="filtro-tienda">Sucursal</label>
+            <select id="filtro-tienda">
+              <option value="">Todas</option>
+            </select>
+          </div>
+
+          <div class="campo">
+            <label for="filtro-proveedor">Proveedor</label>
+            <select id="filtro-proveedor">
+              <option value="">Todos</option>
+            </select>
+          </div>
+        </div>
+
+        <p id="total-devoluciones" style="margin:0.75rem 0;"></p>
+
+        <div class="tabla-contenedor">
+          <table class="tabla-datos">
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>Retiro</th>
+                <th>Sucursal</th>
+                <th>Proveedor</th>
+                <th>Estado</th>
+                <th>Resultado</th>
+                <th class="texto-derecha">Monto</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody id="tabla-devoluciones">
+              <tr>
+                <td colspan="8" class="texto-centro">Cargando devoluciones desde Supabase...</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- Columna 2: detalle y resolución del trámite -->
+      <section class="tarjeta">
+        <h2 class="titulo-seccion">Detalle del trámite</h2>
+
+        <p id="detalle-vacio" class="texto-centro">
+          Selecciona una devolución de la lista para ver su detalle.
+        </p>
+
+        <div id="detalle-contenido" style="display:none;">
+
+          <div id="detalle-resumen"></div>
+
+          <h3 style="margin-top:1.25rem;">Lotes devueltos</h3>
+          <div class="tabla-contenedor">
+            <table class="tabla-datos">
+              <thead>
+                <tr>
+                  <th>Producto / Lote</th>
+                  <th>Vence</th>
+                  <th class="texto-derecha">Cant.</th>
+                  <th>Motivo</th>
+                  <th class="texto-derecha">Costo</th>
+                  <th class="texto-derecha">Subtotal</th>
+                </tr>
+              </thead>
+              <tbody id="tabla-detalle"></tbody>
+            </table>
+          </div>
+          <p id="detalle-total" style="margin-top:0.5rem;"></p>
+
+          <h3 style="margin-top:1.25rem;">Historial del trámite</h3>
+          <div class="tabla-contenedor">
+            <table class="tabla-datos">
+              <thead>
+                <tr>
+                  <th>Fecha</th>
+                  <th>De</th>
+                  <th>A</th>
+                  <th>Comentario</th>
+                </tr>
+              </thead>
+              <tbody id="tabla-historial"></tbody>
+            </table>
+          </div>
+
+          <!-- Solo aparece si la devolución está "En revisión" -->
+          <div id="bloque-gestion" style="display:none;">
+            <h3 style="margin-top:1.25rem;">Resolver trámite</h3>
+            <small id="info-politica"></small>
+
+            <form id="form-gestion" class="formulario">
+
+              <div class="campo">
+                <label for="accion">Respuesta del proveedor</label>
+                <select id="accion">
+                  <option value="">-- Elige una opción --</option>
+                  <option value="Aceptado">Aceptado por el proveedor</option>
+                  <option value="Rechazado">Rechazado por el proveedor</option>
+                </select>
+              </div>
+
+              <!-- Solo si fue aceptado -->
+              <div id="grupo-aceptado" style="display:none;">
+                <div class="campo">
+                  <label for="resultado">Resultado</label>
+                  <select id="resultado"></select>
+                </div>
+
+                <div class="campo">
+                  <label for="monto">Monto liquidado (Q)</label>
+                  <input type="number" id="monto" min="0" step="0.01" value="0" />
+                </div>
+
+                <div class="campo">
+                  <label for="documento">No. de nota de crédito o de canje</label>
+                  <input type="text" id="documento" maxlength="50" />
+                </div>
+              </div>
+
+              <div class="campo">
+                <label for="comentario">Comentario (obligatorio si se rechaza)</label>
+                <textarea id="comentario" rows="3"></textarea>
+              </div>
+
+              <button type="submit" id="btn-guardar" class="btn btn-primario">
+                Guardar resolución
+              </button>
+            </form>
+          </div>
+
+        </div>
+      </section>
+
+    </main>
+  </div>
+
+  <!-- Menú de navegación del módulo -->
+  <script src="js/nav-devoluciones.js"></script>
+
+  <!-- Lógica de esta pantalla (NO se carga app.js aquí) -->
+  <script src="js/seguimiento.js"></script>
+</body>
+</html>
