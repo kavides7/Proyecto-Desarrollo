@@ -14,10 +14,17 @@ const selectTienda = document.getElementById("select-tienda");
 const selectLote = document.getElementById("select-lote");
 const tipoMovimiento = document.getElementById("tipo-movimiento");
 const inputCantidad = document.getElementById("cantidad");
+const inputObservacion = document.getElementById("observacion");
 const formMovimiento = document.getElementById("form-movimiento");
 const tablaStock = document.getElementById("tabla-stock");
 const alerta = document.getElementById("alerta");
 const btnRefrescar = document.getElementById("btn-refrescar");
+const formTraslado = document.getElementById("form-traslado");
+const trasladoOrigen = document.getElementById("traslado-origen");
+const trasladoDestino = document.getElementById("traslado-destino");
+const trasladoLote = document.getElementById("traslado-lote");
+const trasladoCantidad = document.getElementById("traslado-cantidad");
+const trasladoObservacion = document.getElementById("traslado-observacion");
 
 // ====================================================
 // FUNCIONES AUXILIARES
@@ -48,10 +55,31 @@ async function cargarCatalogos() {
       ? tiendas.map(t => `<option value="${t.id_tienda}">${t.nombre} (${t.departamento || 'Huehue'})</option>`).join("")
       : `<option value="">No hay tiendas registradas</option>`;
 
+    const opcionesTiendas = tiendas.map(t => `
+      <option value="${t.id_tienda}">
+        ${t.nombre}
+      </option>
+    `).join("");
+
+    trasladoOrigen.innerHTML =
+      `<option value="">Seleccionar sucursal</option>` +
+      opcionesTiendas;
+
+    trasladoDestino.innerHTML =
+      `<option value="">Seleccionar sucursal</option>` +
+      opcionesTiendas;  
+
     // 2. Consultar lotes con la relación a medicamentos
     const { data: lotes, error: errLotes } = await client
       .from("lotes")
-      .select("id_lote, numero_lote, fecha_vencimiento, productos(nombre)");
+      .select(`
+        id_lote,
+        id_producto,
+        numero_lote,
+        fecha_vencimiento,
+        fecha_ingreso,
+        productos(nombre)
+      `);
 
     if (errLotes) throw errLotes;
 
@@ -61,6 +89,15 @@ async function cargarCatalogos() {
 
     // 3. Cargar tabla de existencias
     await consultarStockActual();
+
+      trasladoLote.innerHTML =
+    `<option value="">Seleccionar lote</option>` +
+    lotes.map(l => `
+      <option value="${l.id_lote}">
+        ${l.productos?.nombre || "Medicamento"} -
+        Lote ${l.numero_lote}
+      </option>
+    `).join("");
 
   } catch (error) {
     console.error("Error al inicializar catálogos:", error);
@@ -119,6 +156,138 @@ async function consultarStockActual() {
 }
 
 // ====================================================
+// PROCESAR VENTA MEDIANTE PEPS / FIFO
+// ====================================================
+async function procesarVentaPEPS(idTienda, idLoteSeleccionado, cantidad, observacion) {
+
+  // 1. Averiguar a qué producto pertenece el lote seleccionado
+  const { data: loteSeleccionado, error: errorLote } = await client
+    .from("lotes")
+    .select("id_lote, id_producto")
+    .eq("id_lote", idLoteSeleccionado)
+    .single();
+
+  if (errorLote) throw errorLote;
+
+  const idProducto = loteSeleccionado.id_producto;
+
+  // 2. Obtener todos los lotes de ese producto,
+  // ordenados del más antiguo al más reciente (PEPS)
+  const { data: lotesProducto, error: errorLotes } = await client
+    .from("lotes")
+    .select("id_lote, numero_lote, fecha_ingreso")
+    .eq("id_producto", idProducto)
+    .order("fecha_ingreso", { ascending: true })
+    .order("id_lote", { ascending: true });
+
+  if (errorLotes) throw errorLotes;
+
+  const idsLotes = lotesProducto.map(lote => lote.id_lote);
+
+  if (idsLotes.length === 0) {
+    throw new Error("No existen lotes para este producto.");
+  }
+
+  // 3. Consultar inventario disponible de esos lotes
+  // solamente en la sucursal seleccionada
+  const { data: inventarios, error: errorInventario } = await client
+    .from("inventario")
+    .select("id_inventario, id_lote, stock_actual")
+    .eq("id_tienda", idTienda)
+    .in("id_lote", idsLotes)
+    .gt("stock_actual", 0);
+
+  if (errorInventario) throw errorInventario;
+
+  // 4. Ordenarlos según el orden PEPS obtenido anteriormente
+  const inventariosOrdenados = lotesProducto
+    .map(lote => {
+
+      const inventario = inventarios.find(
+        item => item.id_lote === lote.id_lote
+      );
+
+      if (!inventario) return null;
+
+      return {
+        ...inventario,
+        numero_lote: lote.numero_lote,
+        fecha_ingreso: lote.fecha_ingreso
+      };
+    })
+    .filter(Boolean);
+
+  // 5. Verificar el stock TOTAL antes de modificar nada
+  const stockTotal = inventariosOrdenados.reduce(
+    (total, item) => total + item.stock_actual,
+    0
+  );
+
+  if (stockTotal < cantidad) {
+    mostrarAlerta(
+      `Operación rechazada: stock total insuficiente. Hay ${stockTotal} unidades disponibles entre todos los lotes.`,
+      true
+    );
+
+    return false;
+  }
+
+  // Una referencia común para todos los movimientos de esta venta
+  const referenciaVenta = `VENTA-PEPS-${Date.now()}`;
+
+  let cantidadPendiente = cantidad;
+
+  // 6. Consumir lote por lote
+  for (const inventario of inventariosOrdenados) {
+
+    if (cantidadPendiente <= 0) break;
+
+    const stockAnterior = inventario.stock_actual;
+
+    const cantidadSalida = Math.min(
+      stockAnterior,
+      cantidadPendiente
+    );
+
+    const nuevoStock =
+      stockAnterior - cantidadSalida;
+
+    // Actualizar inventario
+    const { error: errorUpdate } = await client
+      .from("inventario")
+      .update({
+        stock_actual: nuevoStock
+      })
+      .eq(
+        "id_inventario",
+        inventario.id_inventario
+      );
+
+    if (errorUpdate) throw errorUpdate;
+
+    // Registrar movimiento individual en Kardex
+    const { error: errorMovimiento } = await client
+      .from("movimientos_stock")
+      .insert({
+        id_tienda: idTienda,
+        id_lote: inventario.id_lote,
+        tipo_movimiento: "VENTA",
+        cantidad: cantidadSalida,
+        saldo_anterior: stockAnterior,
+        saldo_resultante: nuevoStock,
+        referencia: referenciaVenta,
+        observacion: observacion || "Venta procesada mediante PEPS"
+      });
+
+    if (errorMovimiento) throw errorMovimiento;
+
+    cantidadPendiente -= cantidadSalida;
+  }
+
+  return true;
+}
+
+// ====================================================
 // PROCESAR ENTRADAS / SALIDAS (CONTROL DE STOCK)
 // ====================================================
 formMovimiento.addEventListener("submit", async (e) => {
@@ -128,14 +297,53 @@ formMovimiento.addEventListener("submit", async (e) => {
   const idLote = parseInt(selectLote.value);
   const tipo = tipoMovimiento.value;
   const cantidad = parseInt(inputCantidad.value);
+  const observacion = inputObservacion.value.trim();
 
   if (isNaN(cantidad) || cantidad <= 0) {
     mostrarAlerta("Ingresa una cantidad válida mayor a 0.", true);
     return;
   }
 
+  if (
+  (tipo === "AJUSTE_POSITIVO" || tipo === "AJUSTE_NEGATIVO")
+  && observacion === ""
+) {
+  mostrarAlerta(
+    "Debes indicar el motivo del ajuste de inventario.",
+    true
+  );
+  return;
+}
+
   try {
     // 1. Buscar si ya existe el registro de inventario para esa tienda y lote
+
+
+    // venta mediatne PEPS / FIFO
+      if (tipo === "VENTA") {
+
+        const ventaRealizada = await procesarVentaPEPS(
+          idTienda,
+          idLote,
+          cantidad,
+          observacion
+        );
+
+        if (!ventaRealizada) {
+          return;
+        }
+
+        mostrarAlerta(
+          `¡Éxito! Venta de ${cantidad} unidades procesada mediante PEPS.`
+        );
+
+        formMovimiento.reset();
+
+        await cargarCatalogos();
+
+        return;
+      }
+
     const { data: registroActual, error: errBusq } = await client
       .from("inventario")
       .select("id_inventario, stock_actual")
@@ -149,14 +357,26 @@ formMovimiento.addEventListener("submit", async (e) => {
     let nuevoStock = stockAnterior;
 
     // 2. Aplicar lógica de negocio
-    if (tipo === "COMPRA") {
+    if (tipo === "COMPRA" || tipo === "AJUSTE_POSITIVO") {
+
       nuevoStock = stockAnterior + cantidad;
-    } else if (tipo === "VENTA") {
+
+    } else if (tipo === "VENTA" || tipo === "AJUSTE_NEGATIVO") {
+
       if (stockAnterior < cantidad) {
-        mostrarAlerta(`Operación rechazada: Stock insuficiente. Solo hay ${stockAnterior} unidades disponibles.`, true);
+        mostrarAlerta(
+          `Operación rechazada: Stock insuficiente. Solo hay ${stockAnterior} unidades disponibles.`,
+          true
+        );
         return;
       }
+
       nuevoStock = stockAnterior - cantidad;
+
+    } else {
+
+      mostrarAlerta("Tipo de movimiento no válido.", true);
+      return;
     }
 
     // 3. Actualizar tabla inventario
@@ -171,15 +391,31 @@ formMovimiento.addEventListener("submit", async (e) => {
     if (errUpsert) throw errUpsert;
 
     // 4. Guardar trazabilidad en movimientos_stock
-    await client.from("movimientos_stock").insert({
+    const { error: errMovimiento } = await client
+    .from("movimientos_stock")
+    .insert({
       id_tienda: idTienda,
       id_lote: idLote,
       tipo_movimiento: tipo,
-      cantidad: cantidad
+      cantidad: cantidad,
+      saldo_anterior: stockAnterior,
+      saldo_resultante: nuevoStock,
+      observacion: observacion || null
     });
 
-    mostrarAlerta(`¡Éxito! Se registró la ${tipo === "COMPRA" ? "Entrada (Compra)" : "Salida (Venta)"} de ${cantidad} unidades.`);
-    
+  if (errMovimiento) throw errMovimiento;
+
+    const nombresMovimiento = {
+      COMPRA: "Entrada (Compra)",
+      VENTA: "Salida (Venta)",
+      AJUSTE_POSITIVO: "Ajuste positivo",
+      AJUSTE_NEGATIVO: "Ajuste negativo"
+    };
+
+    mostrarAlerta(
+      `¡Éxito! Se registró ${nombresMovimiento[tipo]} de ${cantidad} unidades.`
+    );
+        
     // Recargar tabla con datos actualizados
     await consultarStockActual();
 
@@ -191,6 +427,200 @@ formMovimiento.addEventListener("submit", async (e) => {
 
 // Evento botón actualizar
 btnRefrescar.addEventListener("click", consultarStockActual);
+
+formTraslado.addEventListener("submit", async (e) => {
+
+  e.preventDefault();
+
+  const idOrigen = parseInt(trasladoOrigen.value);
+  const idDestino = parseInt(trasladoDestino.value);
+  const idLote = parseInt(trasladoLote.value);
+  const cantidad = parseInt(trasladoCantidad.value);
+  const observacion = trasladoObservacion.value.trim();
+
+  if (!idOrigen || !idDestino || !idLote) {
+    mostrarAlerta(
+      "Selecciona origen, destino y lote.",
+      true
+    );
+    return;
+  }
+
+  if (idOrigen === idDestino) {
+    mostrarAlerta(
+      "La sucursal de origen y destino no pueden ser iguales.",
+      true
+    );
+    return;
+  }
+
+  if (isNaN(cantidad) || cantidad <= 0) {
+    mostrarAlerta(
+      "La cantidad del traslado debe ser mayor a 0.",
+      true
+    );
+    return;
+  }
+
+  try {
+
+    // INVENTARIO ORIGEN
+    const {
+      data: inventarioOrigen,
+      error: errorOrigen
+    } = await client
+      .from("inventario")
+      .select("id_inventario, stock_actual")
+      .eq("id_tienda", idOrigen)
+      .eq("id_lote", idLote)
+      .maybeSingle();
+
+    if (errorOrigen) throw errorOrigen;
+
+    if (!inventarioOrigen) {
+      mostrarAlerta(
+        "La sucursal de origen no posee este lote.",
+        true
+      );
+      return;
+    }
+
+    const stockOrigen =
+      inventarioOrigen.stock_actual;
+
+    if (stockOrigen < cantidad) {
+      mostrarAlerta(
+        `Stock insuficiente. La sucursal origen posee ${stockOrigen} unidades.`,
+        true
+      );
+      return;
+    }
+
+
+    // INVENTARIO DESTINO
+    const {
+      data: inventarioDestino,
+      error: errorDestino
+    } = await client
+      .from("inventario")
+      .select("id_inventario, stock_actual")
+      .eq("id_tienda", idDestino)
+      .eq("id_lote", idLote)
+      .maybeSingle();
+
+    if (errorDestino) throw errorDestino;
+
+    const stockDestino =
+      inventarioDestino
+        ? inventarioDestino.stock_actual
+        : 0;
+
+
+    const nuevoOrigen =
+      stockOrigen - cantidad;
+
+    const nuevoDestino =
+      stockDestino + cantidad;
+
+
+    // REFERENCIA DEL TRASLADO
+    const referencia =
+      `TRAS-${Date.now()}`;
+
+
+    // ACTUALIZAR ORIGEN
+    const { error: errorUpdateOrigen } =
+      await client
+        .from("inventario")
+        .update({
+          stock_actual: nuevoOrigen
+        })
+        .eq(
+          "id_inventario",
+          inventarioOrigen.id_inventario
+        );
+
+    if (errorUpdateOrigen)
+      throw errorUpdateOrigen;
+
+
+    // ACTUALIZAR / CREAR DESTINO
+    const { error: errorUpdateDestino } =
+      await client
+        .from("inventario")
+        .upsert({
+          id_tienda: idDestino,
+          id_lote: idLote,
+          stock_actual: nuevoDestino
+        }, {
+          onConflict: "id_tienda,id_lote"
+        });
+
+    if (errorUpdateDestino)
+      throw errorUpdateDestino;
+
+
+    // REGISTRAR SALIDA
+    const { error: errorMovimientoSalida } =
+      await client
+        .from("movimientos_stock")
+        .insert({
+          id_tienda: idOrigen,
+          id_lote: idLote,
+          tipo_movimiento: "TRASLADO_SALIDA",
+          cantidad,
+          saldo_anterior: stockOrigen,
+          saldo_resultante: nuevoOrigen,
+          referencia,
+          observacion: observacion || "Traslado entre sucursales"
+        });
+
+    if (errorMovimientoSalida)
+      throw errorMovimientoSalida;
+
+
+    // REGISTRAR ENTRADA
+    const { error: errorMovimientoEntrada } =
+      await client
+        .from("movimientos_stock")
+        .insert({
+          id_tienda: idDestino,
+          id_lote: idLote,
+          tipo_movimiento: "TRASLADO_ENTRADA",
+          cantidad,
+          saldo_anterior: stockDestino,
+          saldo_resultante: nuevoDestino,
+          referencia,
+          observacion: observacion || "Traslado entre sucursales"
+        });
+
+    if (errorMovimientoEntrada)
+      throw errorMovimientoEntrada;
+
+
+    mostrarAlerta(
+      `Traslado realizado correctamente. Referencia: ${referencia}`
+    );
+
+    formTraslado.reset();
+
+    await consultarStockActual();
+
+  } catch (error) {
+
+    console.error(
+      "Error realizando traslado:",
+      error
+    );
+
+    mostrarAlerta(
+      "No fue posible realizar el traslado: " +
+      error.message,
+      true
+    );
+  }
+
+});
 
 // Inicializar al cargar la página
 document.addEventListener("DOMContentLoaded", cargarCatalogos);
