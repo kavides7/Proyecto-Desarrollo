@@ -72,7 +72,14 @@ async function cargarCatalogos() {
     // 2. Consultar lotes con la relación a medicamentos
     const { data: lotes, error: errLotes } = await client
       .from("lotes")
-      .select("id_lote, numero_lote, fecha_vencimiento, productos(nombre)");
+      .select(`
+        id_lote,
+        id_producto,
+        numero_lote,
+        fecha_vencimiento,
+        fecha_ingreso,
+        productos(nombre)
+      `);
 
     if (errLotes) throw errLotes;
 
@@ -149,6 +156,138 @@ async function consultarStockActual() {
 }
 
 // ====================================================
+// PROCESAR VENTA MEDIANTE PEPS / FIFO
+// ====================================================
+async function procesarVentaPEPS(idTienda, idLoteSeleccionado, cantidad, observacion) {
+
+  // 1. Averiguar a qué producto pertenece el lote seleccionado
+  const { data: loteSeleccionado, error: errorLote } = await client
+    .from("lotes")
+    .select("id_lote, id_producto")
+    .eq("id_lote", idLoteSeleccionado)
+    .single();
+
+  if (errorLote) throw errorLote;
+
+  const idProducto = loteSeleccionado.id_producto;
+
+  // 2. Obtener todos los lotes de ese producto,
+  // ordenados del más antiguo al más reciente (PEPS)
+  const { data: lotesProducto, error: errorLotes } = await client
+    .from("lotes")
+    .select("id_lote, numero_lote, fecha_ingreso")
+    .eq("id_producto", idProducto)
+    .order("fecha_ingreso", { ascending: true })
+    .order("id_lote", { ascending: true });
+
+  if (errorLotes) throw errorLotes;
+
+  const idsLotes = lotesProducto.map(lote => lote.id_lote);
+
+  if (idsLotes.length === 0) {
+    throw new Error("No existen lotes para este producto.");
+  }
+
+  // 3. Consultar inventario disponible de esos lotes
+  // solamente en la sucursal seleccionada
+  const { data: inventarios, error: errorInventario } = await client
+    .from("inventario")
+    .select("id_inventario, id_lote, stock_actual")
+    .eq("id_tienda", idTienda)
+    .in("id_lote", idsLotes)
+    .gt("stock_actual", 0);
+
+  if (errorInventario) throw errorInventario;
+
+  // 4. Ordenarlos según el orden PEPS obtenido anteriormente
+  const inventariosOrdenados = lotesProducto
+    .map(lote => {
+
+      const inventario = inventarios.find(
+        item => item.id_lote === lote.id_lote
+      );
+
+      if (!inventario) return null;
+
+      return {
+        ...inventario,
+        numero_lote: lote.numero_lote,
+        fecha_ingreso: lote.fecha_ingreso
+      };
+    })
+    .filter(Boolean);
+
+  // 5. Verificar el stock TOTAL antes de modificar nada
+  const stockTotal = inventariosOrdenados.reduce(
+    (total, item) => total + item.stock_actual,
+    0
+  );
+
+  if (stockTotal < cantidad) {
+    mostrarAlerta(
+      `Operación rechazada: stock total insuficiente. Hay ${stockTotal} unidades disponibles entre todos los lotes.`,
+      true
+    );
+
+    return false;
+  }
+
+  // Una referencia común para todos los movimientos de esta venta
+  const referenciaVenta = `VENTA-PEPS-${Date.now()}`;
+
+  let cantidadPendiente = cantidad;
+
+  // 6. Consumir lote por lote
+  for (const inventario of inventariosOrdenados) {
+
+    if (cantidadPendiente <= 0) break;
+
+    const stockAnterior = inventario.stock_actual;
+
+    const cantidadSalida = Math.min(
+      stockAnterior,
+      cantidadPendiente
+    );
+
+    const nuevoStock =
+      stockAnterior - cantidadSalida;
+
+    // Actualizar inventario
+    const { error: errorUpdate } = await client
+      .from("inventario")
+      .update({
+        stock_actual: nuevoStock
+      })
+      .eq(
+        "id_inventario",
+        inventario.id_inventario
+      );
+
+    if (errorUpdate) throw errorUpdate;
+
+    // Registrar movimiento individual en Kardex
+    const { error: errorMovimiento } = await client
+      .from("movimientos_stock")
+      .insert({
+        id_tienda: idTienda,
+        id_lote: inventario.id_lote,
+        tipo_movimiento: "VENTA",
+        cantidad: cantidadSalida,
+        saldo_anterior: stockAnterior,
+        saldo_resultante: nuevoStock,
+        referencia: referenciaVenta,
+        observacion: observacion || "Venta procesada mediante PEPS"
+      });
+
+    if (errorMovimiento) throw errorMovimiento;
+
+    cantidadPendiente -= cantidadSalida;
+  }
+
+  return true;
+}
+
+// ====================================================
 // PROCESAR ENTRADAS / SALIDAS (CONTROL DE STOCK)
 // ====================================================
 formMovimiento.addEventListener("submit", async (e) => {
@@ -178,6 +317,33 @@ formMovimiento.addEventListener("submit", async (e) => {
 
   try {
     // 1. Buscar si ya existe el registro de inventario para esa tienda y lote
+
+
+    // venta mediatne PEPS / FIFO
+      if (tipo === "VENTA") {
+
+        const ventaRealizada = await procesarVentaPEPS(
+          idTienda,
+          idLote,
+          cantidad,
+          observacion
+        );
+
+        if (!ventaRealizada) {
+          return;
+        }
+
+        mostrarAlerta(
+          `¡Éxito! Venta de ${cantidad} unidades procesada mediante PEPS.`
+        );
+
+        formMovimiento.reset();
+
+        await cargarCatalogos();
+
+        return;
+      }
+
     const { data: registroActual, error: errBusq } = await client
       .from("inventario")
       .select("id_inventario, stock_actual")
