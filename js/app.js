@@ -19,6 +19,12 @@ const formMovimiento = document.getElementById("form-movimiento");
 const tablaStock = document.getElementById("tabla-stock");
 const alerta = document.getElementById("alerta");
 const btnRefrescar = document.getElementById("btn-refrescar");
+const formTraslado = document.getElementById("form-traslado");
+const trasladoOrigen = document.getElementById("traslado-origen");
+const trasladoDestino = document.getElementById("traslado-destino");
+const trasladoLote = document.getElementById("traslado-lote");
+const trasladoCantidad = document.getElementById("traslado-cantidad");
+const trasladoObservacion = document.getElementById("traslado-observacion");
 
 // ====================================================
 // FUNCIONES AUXILIARES
@@ -49,6 +55,20 @@ async function cargarCatalogos() {
       ? tiendas.map(t => `<option value="${t.id_tienda}">${t.nombre} (${t.departamento || 'Huehue'})</option>`).join("")
       : `<option value="">No hay tiendas registradas</option>`;
 
+    const opcionesTiendas = tiendas.map(t => `
+      <option value="${t.id_tienda}">
+        ${t.nombre}
+      </option>
+    `).join("");
+
+    trasladoOrigen.innerHTML =
+      `<option value="">Seleccionar sucursal</option>` +
+      opcionesTiendas;
+
+    trasladoDestino.innerHTML =
+      `<option value="">Seleccionar sucursal</option>` +
+      opcionesTiendas;  
+
     // 2. Consultar lotes con la relación a medicamentos
     const { data: lotes, error: errLotes } = await client
       .from("lotes")
@@ -62,6 +82,15 @@ async function cargarCatalogos() {
 
     // 3. Cargar tabla de existencias
     await consultarStockActual();
+
+      trasladoLote.innerHTML =
+    `<option value="">Seleccionar lote</option>` +
+    lotes.map(l => `
+      <option value="${l.id_lote}">
+        ${l.productos?.nombre || "Medicamento"} -
+        Lote ${l.numero_lote}
+      </option>
+    `).join("");
 
   } catch (error) {
     console.error("Error al inicializar catálogos:", error);
@@ -232,6 +261,200 @@ formMovimiento.addEventListener("submit", async (e) => {
 
 // Evento botón actualizar
 btnRefrescar.addEventListener("click", consultarStockActual);
+
+formTraslado.addEventListener("submit", async (e) => {
+
+  e.preventDefault();
+
+  const idOrigen = parseInt(trasladoOrigen.value);
+  const idDestino = parseInt(trasladoDestino.value);
+  const idLote = parseInt(trasladoLote.value);
+  const cantidad = parseInt(trasladoCantidad.value);
+  const observacion = trasladoObservacion.value.trim();
+
+  if (!idOrigen || !idDestino || !idLote) {
+    mostrarAlerta(
+      "Selecciona origen, destino y lote.",
+      true
+    );
+    return;
+  }
+
+  if (idOrigen === idDestino) {
+    mostrarAlerta(
+      "La sucursal de origen y destino no pueden ser iguales.",
+      true
+    );
+    return;
+  }
+
+  if (isNaN(cantidad) || cantidad <= 0) {
+    mostrarAlerta(
+      "La cantidad del traslado debe ser mayor a 0.",
+      true
+    );
+    return;
+  }
+
+  try {
+
+    // INVENTARIO ORIGEN
+    const {
+      data: inventarioOrigen,
+      error: errorOrigen
+    } = await client
+      .from("inventario")
+      .select("id_inventario, stock_actual")
+      .eq("id_tienda", idOrigen)
+      .eq("id_lote", idLote)
+      .maybeSingle();
+
+    if (errorOrigen) throw errorOrigen;
+
+    if (!inventarioOrigen) {
+      mostrarAlerta(
+        "La sucursal de origen no posee este lote.",
+        true
+      );
+      return;
+    }
+
+    const stockOrigen =
+      inventarioOrigen.stock_actual;
+
+    if (stockOrigen < cantidad) {
+      mostrarAlerta(
+        `Stock insuficiente. La sucursal origen posee ${stockOrigen} unidades.`,
+        true
+      );
+      return;
+    }
+
+
+    // INVENTARIO DESTINO
+    const {
+      data: inventarioDestino,
+      error: errorDestino
+    } = await client
+      .from("inventario")
+      .select("id_inventario, stock_actual")
+      .eq("id_tienda", idDestino)
+      .eq("id_lote", idLote)
+      .maybeSingle();
+
+    if (errorDestino) throw errorDestino;
+
+    const stockDestino =
+      inventarioDestino
+        ? inventarioDestino.stock_actual
+        : 0;
+
+
+    const nuevoOrigen =
+      stockOrigen - cantidad;
+
+    const nuevoDestino =
+      stockDestino + cantidad;
+
+
+    // REFERENCIA DEL TRASLADO
+    const referencia =
+      `TRAS-${Date.now()}`;
+
+
+    // ACTUALIZAR ORIGEN
+    const { error: errorUpdateOrigen } =
+      await client
+        .from("inventario")
+        .update({
+          stock_actual: nuevoOrigen
+        })
+        .eq(
+          "id_inventario",
+          inventarioOrigen.id_inventario
+        );
+
+    if (errorUpdateOrigen)
+      throw errorUpdateOrigen;
+
+
+    // ACTUALIZAR / CREAR DESTINO
+    const { error: errorUpdateDestino } =
+      await client
+        .from("inventario")
+        .upsert({
+          id_tienda: idDestino,
+          id_lote: idLote,
+          stock_actual: nuevoDestino
+        }, {
+          onConflict: "id_tienda,id_lote"
+        });
+
+    if (errorUpdateDestino)
+      throw errorUpdateDestino;
+
+
+    // REGISTRAR SALIDA
+    const { error: errorMovimientoSalida } =
+      await client
+        .from("movimientos_stock")
+        .insert({
+          id_tienda: idOrigen,
+          id_lote: idLote,
+          tipo_movimiento: "TRASLADO_SALIDA",
+          cantidad,
+          saldo_anterior: stockOrigen,
+          saldo_resultante: nuevoOrigen,
+          referencia,
+          observacion: observacion || "Traslado entre sucursales"
+        });
+
+    if (errorMovimientoSalida)
+      throw errorMovimientoSalida;
+
+
+    // REGISTRAR ENTRADA
+    const { error: errorMovimientoEntrada } =
+      await client
+        .from("movimientos_stock")
+        .insert({
+          id_tienda: idDestino,
+          id_lote: idLote,
+          tipo_movimiento: "TRASLADO_ENTRADA",
+          cantidad,
+          saldo_anterior: stockDestino,
+          saldo_resultante: nuevoDestino,
+          referencia,
+          observacion: observacion || "Traslado entre sucursales"
+        });
+
+    if (errorMovimientoEntrada)
+      throw errorMovimientoEntrada;
+
+
+    mostrarAlerta(
+      `Traslado realizado correctamente. Referencia: ${referencia}`
+    );
+
+    formTraslado.reset();
+
+    await consultarStockActual();
+
+  } catch (error) {
+
+    console.error(
+      "Error realizando traslado:",
+      error
+    );
+
+    mostrarAlerta(
+      "No fue posible realizar el traslado: " +
+      error.message,
+      true
+    );
+  }
+
+});
 
 // Inicializar al cargar la página
 document.addEventListener("DOMContentLoaded", cargarCatalogos);

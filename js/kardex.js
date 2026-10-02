@@ -152,6 +152,7 @@ async function consultarKardex() {
             saldo_anterior,
             saldo_resultante,
             observacion,
+            referencia,
             fecha_movimiento,
             id_tienda,
             id_lote,
@@ -359,29 +360,36 @@ function mostrarMovimientos(movimientos) {
                         </code>
                     </td>
 
+                    <!-- TIPO DE MOVIMIENTO -->
                     <td>
                         <span class="tipo-movimiento">
                             ${movimiento.tipo_movimiento}
                         </span>
                     </td>
 
+                    <!-- REFERENCIA DEL TRASLADO -->
+                    <td>
+                        <code>
+                            ${movimiento.referencia || "-"}
+                        </code>
+                    </td>
+
+                    <!-- OBSERVACIÓN -->
                     <td>
                         ${movimiento.observacion || "-"}
                     </td>
 
-                    <td class="
-                        texto-derecha
-                        movimiento-entrada
-                    ">
+                    <!-- ENTRADA -->
+                    <td class="texto-derecha movimiento-entrada">
                         ${entrada}
                     </td>
 
-                    <td class="
-                        texto-derecha
-                        movimiento-salida
-                    ">
+                    <!-- SALIDA -->
+                    <td class="texto-derecha movimiento-salida">
                         ${salida}
                     </td>
+
+                    <!-- SALDO -->
                     <td class="texto-derecha">
                         <strong>
                             ${movimiento.saldo_resultante ?? "-"}

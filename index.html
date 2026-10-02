@@ -111,6 +111,70 @@
       </section>
 
     </main>
+        <section class="tarjeta" style="margin-top: 24px;">
+
+      <h2 class="titulo-seccion">
+        Traslado entre sucursales
+      </h2>
+
+      <form id="form-traslado" class="formulario">
+
+        <div class="campo">
+          <label for="traslado-origen">Sucursal de origen</label>
+
+          <select id="traslado-origen" required>
+            <option value="">Seleccionar sucursal</option>
+          </select>
+        </div>
+
+        <div class="campo">
+          <label for="traslado-destino">Sucursal de destino</label>
+
+          <select id="traslado-destino" required>
+            <option value="">Seleccionar sucursal</option>
+          </select>
+        </div>
+
+        <div class="campo">
+          <label for="traslado-lote">Medicamento / Lote</label>
+
+          <select id="traslado-lote" required>
+            <option value="">Seleccionar lote</option>
+          </select>
+        </div>
+
+        <div class="campo">
+          <label for="traslado-cantidad">Cantidad</label>
+
+          <input
+            type="number"
+            id="traslado-cantidad"
+            min="1"
+            required
+          />
+        </div>
+
+        <div class="campo">
+          <label for="traslado-observacion">Observación</label>
+
+          <input
+            type="text"
+            id="traslado-observacion"
+            maxlength="250"
+            placeholder="Ej. Redistribución de inventario"
+          />
+        </div>
+
+        <button
+          type="submit"
+          class="btn btn-primario"
+        >
+          Realizar traslado
+        </button>
+
+      </form>
+
+    </section>
   </div>
 
   <!-- Lógica JavaScript -->
