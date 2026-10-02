@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>FARMATODO - Historial de Liquidaciones</title>
+
+  <!-- Estilos compartidos del equipo -->
+  <link rel="stylesheet" href="css/styles.css" />
+
+  <!-- Lo que tenga esta clase no sale al imprimir -->
+  <style>
+    @media print {
+      .no-imprimir { display: none !important; }
+    }
+  </style>
+
+  <!-- CDN oficial de Supabase JS -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+  <div class="contenedor">
+
+    <header class="header-principal">
+      <div class="header-texto">
+        <h1>Droguería FARMATODO</h1>
+        <p>Historial de liquidaciones con proveedores</p>
+      </div>
+      <div class="badge-region no-imprimir">
+        <a href="seguimiento.html" style="color:inherit; text-decoration:none;">Seguimiento</a>
+        &nbsp;|&nbsp;
+        <a href="nueva-devolucion.html" style="color:inherit; text-decoration:none;">Nueva devolución</a>
+        &nbsp;|&nbsp;
+        <a href="devoluciones.html" style="color:inherit; text-decoration:none;">Proveedores</a>
+      </div>
+    </header>
+
+    <!-- Notificaciones visuales -->
+    <div id="alerta" class="alerta oculto"></div>
+
+    <!-- Filtros -->
+    <section class="tarjeta">
+      <div class="tabla-header">
+        <h2 class="titulo-seccion">Filtros</h2>
+        <div class="no-imprimir">
+          <button type="button" id="btn-limpiar" class="btn btn-secundario">Limpiar filtros</button>
+          <button type="button" id="btn-imprimir" class="btn btn-secundario">🖨 Imprimir / guardar PDF</button>
+        </div>
+      </div>
+
+      <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(180px, 1fr)); gap:1rem;">
+        <div class="campo">
+          <label for="filtro-tienda">Sucursal</label>
+          <select id="filtro-tienda"><option value="">Todas</option></select>
+        </div>
+
+        <div class="campo">
+          <label for="filtro-proveedor">Proveedor</label>
+          <select id="filtro-proveedor"><option value="">Todos</option></select>
+        </div>
+
+        <div class="campo">
+          <label for="filtro-estado">Estado</label>
+          <select id="filtro-estado">
+            <option value="">Todos</option>
+            <option value="En revisión">En revisión</option>
+            <option value="Aceptado">Aceptado</option>
+            <option value="Rechazado">Rechazado</option>
+          </select>
+        </div>
+
+        <div class="campo">
+          <label for="fecha-desde">Retiro desde</label>
+          <input type="date" id="fecha-desde" />
+        </div>
+
+        <div class="campo">
+          <label for="fecha-hasta">Retiro hasta</label>
+          <input type="date" id="fecha-hasta" />
+        </div>
+      </div>
+    </section>
+
+    <!-- Tarjetas de totales -->
+    <div id="estadisticas"
+         style="display:grid; grid-template-columns:repeat(auto-fit, minmax(150px, 1fr)); gap:1rem; margin:1.25rem 0;">
+    </div>
+
+    <!-- Resúmenes por proveedor y por sucursal -->
+    <main class="grid-principal">
+
+      <section class="tarjeta">
+        <h2 class="titulo-seccion">Resumen por proveedor</h2>
+        <div class="tabla-contenedor">
+          <table class="tabla-datos">
+            <thead>
+              <tr>
+                <th>Proveedor</th>
+                <th class="texto-derecha">Total</th>
+                <th class="texto-derecha">Acept.</th>
+                <th class="texto-derecha">Rech.</th>
+                <th class="texto-derecha">Revisión</th>
+                <th class="texto-derecha">Liquidado</th>
+              </tr>
+            </thead>
+            <tbody id="tabla-proveedores"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="tarjeta">
+        <h2 class="titulo-seccion">Resumen por sucursal</h2>
+        <div class="tabla-contenedor">
+          <table class="tabla-datos">
+            <thead>
+              <tr>
+                <th>Sucursal</th>
+                <th class="texto-derecha">Total</th>
+                <th class="texto-derecha">Acept.</th>
+                <th class="texto-derecha">Rech.</th>
+                <th class="texto-derecha">Revisión</th>
+                <th class="texto-derecha">Liquidado</th>
+              </tr>
+            </thead>
+            <tbody id="tabla-sucursales"></tbody>
+          </table>
+        </div>
+      </section>
+
+    </main>
+
+    <!-- Detalle de liquidaciones -->
+    <section class="tarjeta" style="margin-top:1.5rem;">
+      <div class="tabla-header">
+        <h2 class="titulo-seccion">Detalle de liquidaciones</h2>
+        <span id="total-liquidaciones"></span>
+      </div>
+      <div class="tabla-contenedor">
+        <table class="tabla-datos">
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Retiro</th>
+              <th>Resolución</th>
+              <th>Sucursal</th>
+              <th>Proveedor</th>
+              <th>Estado</th>
+              <th>Resultado</th>
+              <th>Documento</th>
+              <th class="texto-derecha">Monto</th>
+            </tr>
+          </thead>
+          <tbody id="tabla-liquidaciones"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- Bitácora de cambios (auditoría) -->
+    <section class="tarjeta" style="margin-top:1.5rem;">
+      <div class="tabla-header">
+        <h2 class="titulo-seccion">Bitácora de cambios de estado</h2>
+        <span id="total-bitacora"></span>
+      </div>
+      <div class="tabla-contenedor">
+        <table class="tabla-datos">
+          <thead>
+            <tr>
+              <th>Fecha y hora</th>
+              <th>Devolución</th>
+              <th>Sucursal</th>
+              <th>Proveedor</th>
+              <th>De</th>
+              <th>A</th>
+              <th>Detalle</th>
+            </tr>
+          </thead>
+          <tbody id="tabla-bitacora"></tbody>
+        </table>
+      </div>
+    </section>
+
+  </div>
+
+  <!-- Lógica de esta pantalla (NO se carga app.js aquí) -->
+  <script src="js/historial.js"></script>
+</body>
+</html>
