@@ -7,7 +7,6 @@
 // Copia estas DOS líneas desde tu archivo js/devoluciones.js (ya tiene la key bien puesta)
 const SUPABASE_URL = "https://falivfgdcqglihwkogvp.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZhbGl2ZmdkY3FnbGlod2tvZ3ZwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTA2MDg3NzksImV4cCI6MjEwNjE4NDc3OX0.5MFm-5lohtj5EnZEwMfthcAQUZFUUscasfJgOAoOePQ";
-
 const db = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 // 2) ELEMENTOS DEL DOM
@@ -296,55 +295,40 @@ btnRegistrar.addEventListener("click", async () => {
   btnRegistrar.textContent = "Registrando...";
 
   const observaciones = inputObservaciones.value.trim();
-  const cabecera = {
-    id_tienda: idTienda,
-    id_proveedor: idProveedor,
-    id_usuario: selectUsuario.value ? parseInt(selectUsuario.value, 10) : null,
-    observaciones: observaciones === "" ? null : observaciones,
-  };
 
-  // Paso A: guardar el encabezado y obtener su id
-  const { data: nueva, error: errorCabecera } = await db
-    .from("devoluciones")
-    .insert([cabecera])
-    .select("id_devolucion")
-    .single();
-
-  if (errorCabecera) {
-    console.error(errorCabecera);
-    avisar("No se pudo registrar la devolución: " + errorCabecera.message, true);
-    btnRegistrar.disabled = false;
-    btnRegistrar.textContent = "Registrar devolución";
-    return;
-  }
-
-  // Paso B: guardar las líneas (lotes) ligadas a ese id
-  const detalle = lineas.map((l) => ({
-    id_devolucion: nueva.id_devolucion,
+  // Lista de lotes en el formato que espera la función de Supabase
+  const lineasParaEnviar = lineas.map((l) => ({
     id_lote: l.id_lote,
     cantidad: l.cantidad,
     costo_unitario: l.costo,
     motivo: l.motivo,
   }));
 
-  const { error: errorDetalle } = await db.from("devolucion_detalle").insert(detalle);
+  // Una sola llamada: la función registrar_devolucion (en Supabase) crea la
+  // devolución, guarda los lotes, descuenta el inventario y registra el movimiento.
+  // Si algo falla (por ejemplo, stock insuficiente), no se guarda nada.
+  const { data: idNuevo, error } = await db.rpc("registrar_devolucion", {
+    p_id_tienda: idTienda,
+    p_id_proveedor: idProveedor,
+    p_id_usuario: selectUsuario.value ? parseInt(selectUsuario.value, 10) : null,
+    p_observaciones: observaciones === "" ? null : observaciones,
+    p_lineas: lineasParaEnviar,
+  });
 
-  if (errorDetalle) {
-    console.error(errorDetalle);
-    // Si fallaron las líneas, se borra el encabezado para no dejar una devolución vacía
-    await db.from("devoluciones").delete().eq("id_devolucion", nueva.id_devolucion);
-    avisar("No se pudieron guardar los lotes: " + errorDetalle.message, true);
-    btnRegistrar.disabled = false;
-    btnRegistrar.textContent = "Registrar devolución";
+  btnRegistrar.disabled = false;
+  btnRegistrar.textContent = "Registrar devolución";
+
+  if (error) {
+    console.error(error);
+    avisar("No se pudo registrar la devolución: " + error.message, true);
     return;
   }
 
-  avisar(`Devolución #${nueva.id_devolucion} registrada con estado "En revisión".`);
+  avisar(`Devolución #${idNuevo} registrada ("En revisión"). Stock descontado.`);
   lineas = [];
   renderLineas();
   inputObservaciones.value = "";
-  btnRegistrar.disabled = false;
-  btnRegistrar.textContent = "Registrar devolución";
+  cargarLotesDeTienda(selectTienda.value); // refresca el stock mostrado
 });
 
 // 11) INICIO
