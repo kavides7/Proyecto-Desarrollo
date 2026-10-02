@@ -332,5 +332,36 @@ btnRegistrar.addEventListener("click", async () => {
 });
 
 // 11) INICIO
-renderLineas();
-cargarCatalogos();
+// Si se llega desde "Retiro de anaquel", la dirección trae la sucursal y el lote
+// (por ejemplo: nueva-devolucion.html?tienda=1&lote=2&cantidad=5) y se preseleccionan.
+async function iniciar() {
+  renderLineas();
+  await cargarCatalogos();
+
+  const parametros = new URLSearchParams(window.location.search);
+  const idTienda = parseInt(parametros.get("tienda"), 10);
+  const idLote = parseInt(parametros.get("lote"), 10);
+  const cantidad = parseInt(parametros.get("cantidad"), 10);
+
+  if (!idTienda) return; // se abrió la pantalla de forma normal
+
+  selectTienda.value = idTienda;
+  await cargarLotesDeTienda(idTienda);
+
+  if (!idLote) return;
+
+  const item = inventarioTienda.find((i) => i.id_lote === idLote);
+  if (!item) {
+    avisar("Ese lote ya no tiene stock en la sucursal elegida.", true);
+    return;
+  }
+
+  selectLote.value = idLote;
+  selectLote.dispatchEvent(new Event("change")); // sugiere el motivo según el vencimiento
+  if (cantidad > 0) {
+    inputCantidad.value = Math.min(cantidad, item.stock);
+  }
+  avisar("Lote preseleccionado desde Retiro de anaquel. Revisa la cantidad y agrégalo a la lista.");
+}
+
+iniciar();

@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>FARMATODO - Retiro de Anaquel</title>
+
+  <!-- Estilos compartidos del equipo -->
+  <link rel="stylesheet" href="css/styles.css" />
+
+  <!-- CDN oficial de Supabase JS -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+  <div class="contenedor">
+
+    <header class="header-principal">
+      <div class="header-texto">
+        <h1>Droguería FARMATODO</h1>
+        <p>Retiro de anaquel: medicamentos próximos a vencer</p>
+      </div>
+      <div class="badge-region">
+        <a href="seguimiento.html" style="color:inherit; text-decoration:none;">Seguimiento</a>
+        &nbsp;|&nbsp;
+        <a href="historial.html" style="color:inherit; text-decoration:none;">Historial</a>
+        &nbsp;|&nbsp;
+        <a href="devoluciones.html" style="color:inherit; text-decoration:none;">Proveedores</a>
+      </div>
+    </header>
+
+    <!-- Notificaciones visuales -->
+    <div id="alerta" class="alerta oculto"></div>
+
+    <!-- Filtros -->
+    <section class="tarjeta">
+      <div class="tabla-header">
+        <h2 class="titulo-seccion">Filtros</h2>
+        <button type="button" id="btn-refrescar" class="btn btn-secundario">🔄 Actualizar</button>
+      </div>
+
+      <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(220px, 1fr)); gap:1rem;">
+        <div class="campo">
+          <label for="filtro-tienda">Sucursal</label>
+          <select id="filtro-tienda"><option value="">Todas</option></select>
+        </div>
+
+        <div class="campo">
+          <label for="filtro-riesgo">Nivel de riesgo</label>
+          <select id="filtro-riesgo">
+            <option value="">Todos</option>
+            <option value="riesgo">En riesgo (rojo y amarillo)</option>
+            <option value="rojo">🔴 Rojo: vencido o crítico</option>
+            <option value="amarillo">🟡 Amarillo: vence en 3 a 6 meses</option>
+            <option value="verde">🟢 Verde: vigente</option>
+          </select>
+        </div>
+      </div>
+    </section>
+
+    <!-- Tarjetas de totales -->
+    <div id="estadisticas"
+         style="display:grid; grid-template-columns:repeat(auto-fit, minmax(150px, 1fr)); gap:1rem; margin:1.25rem 0;">
+    </div>
+
+    <!-- Lista de lotes con stock -->
+    <section class="tarjeta">
+      <div class="tabla-header">
+        <h2 class="titulo-seccion">Lotes con stock en sucursales</h2>
+        <span id="total-lotes"></span>
+      </div>
+
+      <div class="tabla-contenedor">
+        <table class="tabla-datos">
+          <thead>
+            <tr>
+              <th>Sucursal</th>
+              <th>Producto</th>
+              <th>Lote</th>
+              <th>Vence</th>
+              <th class="texto-derecha">Días</th>
+              <th>Semáforo</th>
+              <th class="texto-derecha">Stock</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody id="tabla-anaquel">
+            <tr>
+              <td colspan="8" class="texto-centro">Cargando inventario desde Supabase...</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+  </div>
+
+  <!-- Lógica de esta pantalla (NO se carga app.js aquí) -->
+  <script src="js/anaquel.js"></script>
+</body>
+</html>
