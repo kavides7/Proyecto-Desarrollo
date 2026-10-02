@@ -40,6 +40,29 @@ const btnConsultar =
 const btnLimpiar =
     document.getElementById("btn-limpiar");
 
+//imprimir
+
+const btnImprimir =
+    document.getElementById("btn-imprimir");
+
+const reporteProducto =
+    document.getElementById("reporte-producto");
+
+const reporteSucursal =
+    document.getElementById("reporte-sucursal");
+
+const reporteLote =
+    document.getElementById("reporte-lote");
+
+const reporteTipo =
+    document.getElementById("reporte-tipo");
+
+const reportePeriodo =
+    document.getElementById("reporte-periodo");
+
+const reporteGenerado =
+    document.getElementById("reporte-generado");
+
 
 // ======================================
 // CARGAR FILTROS
@@ -135,7 +158,7 @@ async function consultarKardex() {
 
     tablaKardex.innerHTML = `
         <tr>
-            <td colspan="7"
+            <td colspan="10"
                 class="texto-centro">
                 Consultando movimientos...
             </td>
@@ -409,6 +432,77 @@ function mostrarMovimientos(movimientos) {
 // EVENTOS
 // ======================================
 
+// Preparar reportes de impresion
+
+
+function prepararReporte() {
+
+    // PRODUCTO
+    reporteProducto.textContent =
+        filtroProducto.value
+            ? filtroProducto.options[
+                filtroProducto.selectedIndex
+              ].text
+            : "Todos los productos";
+
+
+    // SUCURSAL
+    reporteSucursal.textContent =
+        filtroTienda.value
+            ? filtroTienda.options[
+                filtroTienda.selectedIndex
+              ].text
+            : "Todas las sucursales";
+
+
+    // LOTE
+    reporteLote.textContent =
+        filtroLote.value
+            ? filtroLote.options[
+                filtroLote.selectedIndex
+              ].text
+            : "Todos los lotes";
+
+
+    // TIPO DE MOVIMIENTO
+    reporteTipo.textContent =
+        filtroTipo.value
+            ? filtroTipo.options[
+                filtroTipo.selectedIndex
+              ].text
+            : "Todos";
+
+
+    // PERÍODO
+
+    const desde =
+        fechaDesde.value || "Inicio";
+
+    const hasta =
+        fechaHasta.value || "Actualidad";
+
+    if (!fechaDesde.value && !fechaHasta.value) {
+
+        reportePeriodo.textContent =
+            "Todos los registros";
+
+    } else {
+
+        reportePeriodo.textContent =
+            `${desde} - ${hasta}`;
+
+    }
+
+
+    // FECHA DE GENERACIÓN
+
+    const ahora = new Date();
+
+    reporteGenerado.textContent =
+        ahora.toLocaleString("es-GT");
+
+}
+
 btnConsultar.addEventListener(
     "click",
     consultarKardex
@@ -431,10 +525,20 @@ btnLimpiar.addEventListener(
     }
 );
 
+if (btnImprimir) {
 
-// ======================================
+    btnImprimir.addEventListener("click", () => {
+
+        prepararReporte();
+
+        window.print();
+
+    });
+
+}
+
+
 // INICIALIZAR
-// ======================================
 
 document.addEventListener(
     "DOMContentLoaded",

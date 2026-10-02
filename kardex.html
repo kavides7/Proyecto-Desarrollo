@@ -88,6 +88,7 @@
         </div>
 
         <div class="acciones-kardex">
+
             <button id="btn-consultar"
                     class="btn btn-primario">
                 Consultar Kardex
@@ -97,12 +98,70 @@
                     class="btn btn-secundario">
                 Limpiar filtros
             </button>
+
+            <button id="btn-imprimir"
+                    class="btn btn-secundario">
+                🖨 Imprimir / Guardar PDF
+            </button>
+
         </div>
 
     </section>
 
 
     <section class="tarjeta tarjeta-kardex">
+
+        <div id="encabezado-reporte" class="encabezado-reporte">
+
+            <h1>FARMATODO</h1>
+
+            <h2>Reporte de Kardex de Inventario</h2>
+
+            <div class="datos-reporte">
+
+                <p>
+                    <strong>Producto:</strong>
+                    <span id="reporte-producto">
+                        Todos los productos
+                    </span>
+                </p>
+
+                <p>
+                    <strong>Sucursal:</strong>
+                    <span id="reporte-sucursal">
+                        Todas las sucursales
+                    </span>
+                </p>
+
+                <p>
+                    <strong>Lote:</strong>
+                    <span id="reporte-lote">
+                        Todos los lotes
+                    </span>
+                </p>
+
+                <p>
+                    <strong>Tipo de movimiento:</strong>
+                    <span id="reporte-tipo">
+                        Todos
+                    </span>
+                </p>
+
+                <p>
+                    <strong>Período:</strong>
+                    <span id="reporte-periodo">
+                        Todos los registros
+                    </span>
+                </p>
+
+                <p>
+                    <strong>Fecha de generación:</strong>
+                    <span id="reporte-generado"></span>
+                </p>
+
+            </div>
+
+        </div>
 
         <div class="tabla-header">
 

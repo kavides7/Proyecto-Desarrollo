@@ -48,3 +48,126 @@
         flex-direction: column;
     }
 }
+
+/* =========================================
+   REPORTE KARDEX
+========================================= */
+
+.encabezado-reporte {
+    display: none;
+}
+
+.datos-reporte {
+    margin-top: 20px;
+}
+
+.datos-reporte p {
+    margin: 6px 0;
+}
+
+
+/*
+   IMPRESIÓN / PDF
+ */
+
+@media print {
+
+    @page {
+        size: landscape;
+        margin: 10mm;
+    }
+
+    body {
+        background: white;
+        font-size: 10px;
+    }
+
+    .contenedor {
+        width: 100%;
+        max-width: none;
+        margin: 0;
+        padding: 0;
+    }
+
+    /* Ocultar elementos que no pertenecen al reporte */
+
+    .header-principal,
+    .tarjeta:not(.tarjeta-kardex),
+    #alerta-kardex {
+        display: none !important;
+    }
+
+    /* Mostrar encabezado especial */
+
+    .encabezado-reporte {
+        display: block;
+        margin-bottom: 20px;
+        padding-bottom: 15px;
+        border-bottom: 2px solid #000;
+    }
+
+    .encabezado-reporte h1 {
+        margin: 0;
+        font-size: 22px;
+    }
+
+    .encabezado-reporte h2 {
+        margin: 5px 0 15px;
+        font-size: 16px;
+    }
+
+    .datos-reporte {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 4px 20px;
+    }
+
+    .datos-reporte p {
+        margin: 2px 0;
+    }
+
+    /* Tarjeta principal */
+
+    .tarjeta-kardex {
+        margin: 0;
+        padding: 0;
+        border: none;
+        box-shadow: none;
+    }
+
+    .tabla-contenedor {
+        overflow: visible;
+    }
+
+    .tabla-datos {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 8px;
+    }
+
+    .tabla-datos th,
+    .tabla-datos td {
+        padding: 5px;
+        border: 1px solid #ccc;
+    }
+
+    .tabla-datos th {
+        font-size: 8px;
+    }
+
+    /* Intentar evitar partir una fila entre páginas */
+
+    .tabla-datos tr {
+        break-inside: avoid;
+        page-break-inside: avoid;
+    }
+
+    .tipo-movimiento {
+        padding: 2px 4px;
+        font-size: 7px;
+    }
+
+    #total-movimientos {
+        color: #000;
+    }
+}
