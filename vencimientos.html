@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Panel de Vencimientos - FARMATODO</title>
+</head>
+<body>
+    <nav id="menu-principal"></nav>
+    <main class="dashboard-container">
+        <h1>Control y Alertas de Vencimiento</h1>
+        <div class="filtros-reporte">
+            <button id="btn-generar-reporte">Generar Reporte Automático</button>
+            <select id="filtro-riesgo">
+                <option value="todos">Todos los estados</option>
+                <option value="rojo">🔴 Crítico / Vencido</option>
+                <option value="amarillo">🟡 Próximo a vencer</option>
+            </select>
+        </div>
+        <table class="tabla-vencimientos" border="1">
+            <thead>
+                <tr>
+                    <th>Sucursal</th>
+                    <th>Medicamento</th>
+                    <th>Lote</th>
+                    <th>Fecha Expiración</th>
+                    <th>Días Restantes</th>
+                    <th>Stock</th>
+                    <th>Estado (Semáforo)</th>
+                </tr>
+            </thead>
+            <tbody id="tabla-cuerpo-vencimientos">
+            </tbody>
+        </table>
+    </main>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    <script src="vencimientos.js"></script>
+</body>
+</html>
