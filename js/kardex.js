@@ -1,3 +1,4 @@
+
 const SUPABASE_URL = "https://falivfgdcqglihwkogvp.supabase.co";
 
 const SUPABASE_ANON_KEY = "sb_publishable_3W0pALYuAuT75HQG4Upd6A_0odpQzau";
@@ -6,6 +7,7 @@ const client = supabase.createClient(
     SUPABASE_URL,
     SUPABASE_ANON_KEY
 );
+
 
 
 // ELEMENTOS

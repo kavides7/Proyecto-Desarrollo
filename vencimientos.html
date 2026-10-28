@@ -1,39 +1,103 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-    <meta charset="UTF-8">
-    <title>Panel de Vencimientos - FARMATODO</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Panel de Vencimientos - FARMATODO</title>
+  
+  <!-- Estilos compartidos del sistema FARMATODO -->
+  <link rel="stylesheet" href="css/styles.css" />
+  
+  <!-- Dependencias externas -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 </head>
 <body>
-    <nav id="menu-principal"></nav>
-    <main class="dashboard-container">
+
+  <div class="contenedor">
+    
+    <!-- Barra de Navegación Global -->
+    <nav class="barra-navegacion">
+      <div class="nav-seccion">
+        <span class="nav-label">Devoluciones:</span>
+        <a href="anaquel.html" class="nav-link">1. Retiro de anaquel</a>
+        <a href="nueva-devolucion.html" class="nav-link">2. Nueva devolución</a>
+        <a href="seguimiento.html" class="nav-link">3. Seguimiento</a>
+        <a href="historial.html" class="nav-link">4. Historial</a>
+        <a href="seguimiento.html" class="nav-link">Proveedores</a>
+      </div>
+      <div class="nav-seccion">
+        <a href="index.html" class="nav-link">Inventario</a>
+        <a href="kardex.html" class="nav-link">Kardex</a>
+        <a href="vencimientos.html" class="nav-link activo">Vencimientos</a>
+      </div>
+    </nav>
+
+    <!-- Encabezado Institucional -->
+    <header class="header-principal">
+      <div class="header-texto">
         <h1>Control y Alertas de Vencimiento</h1>
-        <div class="filtros-reporte">
-            <button id="btn-generar-reporte">Generar Reporte Automático</button>
-            <select id="filtro-riesgo">
-                <option value="todos">Todos los estados</option>
-                <option value="rojo">🔴 Crítico / Vencido</option>
-                <option value="amarillo">🟡 Próximo a vencer</option>
+        <p>Monitoreo preventivo y alertas tempranas de medicamentos</p>
+      </div>
+      <div class="badge-region">
+        <span>Semaforización en Tiempo Real</span>
+      </div>
+    </header>
+
+    <!-- Contenedor Principal -->
+    <main>
+      
+      <!-- Panel de Controles y Filtros -->
+      <section class="tarjeta" style="margin-bottom: 20px;">
+        <div class="tabla-header">
+          <div>
+            <h2 class="titulo-seccion" style="margin: 0;">Filtros de Alerta</h2>
+            <p class="subtitulo-stock" style="margin-top: 4px;">Seleccione el nivel de riesgo para filtrar los lotes</p>
+          </div>
+
+          <div class="controles-tabla">
+            <select id="filtro-riesgo" class="select-filtro-tabla">
+              <option value="todos">Todos los estados</option>
+              <option value="rojo">🔴 Crítico / Vencido</option>
+              <option value="amarillo">🟡 Próximo a vencer</option>
             </select>
+            
+            <button type="button" id="btn-generar-reporte" class="btn btn-primario">
+              📄 Generar Reporte Automático
+            </button>
+          </div>
         </div>
-        <table class="tabla-vencimientos" border="1">
+      </section>
+
+      <!-- Tabla Estilizada de Vencimientos -->
+      <section class="tarjeta">
+        <div class="tabla-contenedor">
+          <table class="tabla-datos">
             <thead>
-                <tr>
-                    <th>Sucursal</th>
-                    <th>Medicamento</th>
-                    <th>Lote</th>
-                    <th>Fecha Expiración</th>
-                    <th>Días Restantes</th>
-                    <th>Stock</th>
-                    <th>Estado (Semáforo)</th>
-                </tr>
+              <tr>
+                <th>Sucursal</th>
+                <th>Medicamento</th>
+                <th>Lote</th>
+                <th>Fecha Expiración</th>
+                <th class="texto-derecha">Días Restantes</th>
+                <th class="texto-derecha">Stock</th>
+                <th class="texto-centro">Estado (Semáforo)</th>
+              </tr>
             </thead>
             <tbody id="tabla-cuerpo-vencimientos">
+              <tr>
+                <td colspan="7" class="texto-centro">Cargando alertas de vencimiento...</td>
+              </tr>
             </tbody>
-        </table>
+          </table>
+        </div>
+      </section>
+
     </main>
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
-    <script src="vencimientos.js?v=100"></script>
+
+  </div>
+
+  <!-- Lógica de Vencimientos -->
+  <script src="js/vencimientos.js?v=100"></script>
 </body>
 </html>
