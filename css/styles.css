@@ -352,3 +352,37 @@ body {
 .oculto {
   display: none;
 }
+@media print {
+  /* Ocultar navegación, botones de acción y paneles de filtro al imprimir */
+  nav, 
+  header, 
+  .barra-navegacion, 
+  .btn, 
+  #btn-imprimir, 
+  #btn-consultar, 
+  #btn-limpiar, 
+  .panel-filtros, 
+  footer, 
+  .badge-region {
+    display: none !important;
+  }
+
+  body, .contenedor {
+    width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    background: #ffffff !important;
+    color: #000000 !important;
+  }
+
+  table {
+    width: 100% !important;
+    border-collapse: collapse !important;
+    font-size: 10pt !important;
+  }
+
+  th, td {
+    border: 1px solid #cbd5e1 !important;
+    padding: 6px 8px !important;
+  }
+}
