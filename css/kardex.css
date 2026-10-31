@@ -171,3 +171,26 @@
         color: #000;
     }
 }
+@media print {
+    /* Oculta navegación, botones y filtros para imprimir solo la hoja del reporte */
+    nav, header, .barra-navegacion, .btn, .panel-filtros, footer, .badge-region {
+        display: none !important;
+    }
+
+    body, .contenedor {
+        width: 100% !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        background: #ffffff !important;
+    }
+
+    table {
+        width: 100% !important;
+        border-collapse: collapse !important;
+    }
+
+    th, td {
+        border: 1px solid #cbd5e1 !important;
+        padding: 6px 8px !important;
+    }
+}
